@@ -98,6 +98,7 @@ class PhononCalc(PropCalc):
         write_band_structure: bool | str | Path = False,
         write_total_dos: bool | str | Path = False,
         write_phonon: bool | str | Path = True,
+        imag_mode_threshold: float | None = None,
     ) -> None:
         """
         Initializes the class with configuration for the phonon calculations. The initialization parameters control
@@ -121,6 +122,8 @@ class PhononCalc(PropCalc):
         :param write_total_dos: File path or boolean flag to write total density of states (DOS) data.
             Defaults to "total_dos.dat".
         :param write_phonon: File path or boolean flag to write phonon data. Defaults to "phonon.yaml".
+        :params imag_mode_threshold: If there exists an imaginary mode with magnitude above imag_mode_thresohld (THz),
+            then raise a ValueError.
         """
         self.calculator = calculator  # type: ignore[assignment]
         self.atom_disp = atom_disp
@@ -136,6 +139,7 @@ class PhononCalc(PropCalc):
         self.write_band_structure = write_band_structure
         self.write_total_dos = write_total_dos
         self.write_phonon = write_phonon
+        self.imag_mode_threshold = imag_mode_threshold
 
         # Set default paths for output files.
         for key, val, default_path in (
@@ -200,8 +204,17 @@ class PhononCalc(PropCalc):
             write_force_constants(phonon.force_constants, filename=self.write_force_constants)  # type: ignore[arg-type]
         if self.write_band_structure:
             phonon.auto_band_structure(write_yaml=True, filename=self.write_band_structure)
-        if self.write_total_dos:
-            phonon.auto_total_dos(write_dat=True, filename=self.write_total_dos)
+        if self.write_total_dos or self.imag_mode_threshold:
+            dos = phonon.auto_total_dos(write_dat=True, filename=self.write_total_dos if self.write_total_dos else None)
+
+            dos_dict = dos.get_total_dos_dict()
+            frequencies = dos_dict["frequency_points"]
+            weights = dos_dict["total_dos"]
+            neg_mask = frequencies < -self.imag_mode_threshold
+            n_imag_modes = np.sum(weights[neg_mask] > 1e-6)
+            if has_negative_mode:
+                raise ValueError(f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}")
+            
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]
         return result | {"phonon": phonon, "thermal_properties": phonon.get_thermal_properties_dict()}
