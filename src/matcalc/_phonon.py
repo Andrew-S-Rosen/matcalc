@@ -79,6 +79,7 @@ class PhononCalc(PropCalc):
         the calculated phonon properties (e.g., phonon.yaml) to an output
         file, and the path or name of the file if applicable.
     :type write_phonon: bool | str | Path
+    :type imag_mode_threshold: None | float
     """
 
     def __init__(
@@ -98,6 +99,7 @@ class PhononCalc(PropCalc):
         write_band_structure: bool | str | Path = False,
         write_total_dos: bool | str | Path = False,
         write_phonon: bool | str | Path = True,
+        imag_mode_threshold: float | None = None,
     ) -> None:
         """
         Initializes the class with configuration for the phonon calculations. The initialization parameters control
@@ -121,6 +123,9 @@ class PhononCalc(PropCalc):
         :param write_total_dos: File path or boolean flag to write total density of states (DOS) data.
             Defaults to "total_dos.dat".
         :param write_phonon: File path or boolean flag to write phonon data. Defaults to "phonon.yaml".
+        :param imag_mode_threshold: If there exists an imaginary mode with values below imag_mode_threshold (THz),
+            then raise a RuntimeError. For instance, setting this to -0.1 will raise an error if there are frequencies
+            with values less than -0.1 THz, where a negative frequency indicates an imaginary mode per convention.
         """
         self.calculator = calculator  # type: ignore[assignment]
         self.atom_disp = atom_disp
@@ -136,6 +141,7 @@ class PhononCalc(PropCalc):
         self.write_band_structure = write_band_structure
         self.write_total_dos = write_total_dos
         self.write_phonon = write_phonon
+        self.imag_mode_threshold = imag_mode_threshold
 
         # Set default paths for output files.
         for key, val, default_path in (
@@ -200,8 +206,21 @@ class PhononCalc(PropCalc):
             write_force_constants(phonon.force_constants, filename=self.write_force_constants)  # type: ignore[arg-type]
         if self.write_band_structure:
             phonon.auto_band_structure(write_yaml=True, filename=self.write_band_structure)
-        if self.write_total_dos:
-            phonon.auto_total_dos(write_dat=True, filename=self.write_total_dos)
+        if self.write_total_dos or self.imag_mode_threshold:
+            phonon.auto_total_dos(write_dat=bool(self.write_total_dos), filename=self.write_total_dos)
+
+            if self.imag_mode_threshold:
+                dos_dict = phonon.get_total_dos_dict()
+                frequencies = dos_dict["frequency_points"]
+                weights = dos_dict["total_dos"]
+                imag_modes = frequencies[(frequencies < self.imag_mode_threshold) & (weights > 0.0)]
+                if len(imag_modes) > 0:
+                    msg = (
+                        f"{len(imag_modes)} imaginary modes found with values below "
+                        f"{self.imag_mode_threshold}: {imag_modes}"
+                    )
+                    raise RuntimeError(msg)
+
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]
         return result | {"phonon": phonon, "thermal_properties": phonon.get_thermal_properties_dict()}
