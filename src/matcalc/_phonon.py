@@ -124,7 +124,7 @@ class PhononCalc(PropCalc):
             Defaults to "total_dos.dat".
         :param write_phonon: File path or boolean flag to write phonon data. Defaults to "phonon.yaml".
         :param imag_mode_threshold: If there exists an imaginary mode with values below imag_mode_threshold (THz),
-            then raise a ValueError. For instance, setting this to -0.1 will raise an error if there are frequencies
+            then raise a RuntimeError. For instance, setting this to -0.1 will raise an error if there are frequencies
             with values less than -0.1 THz, where a negative frequency indicates an imaginary mode per convention.
         """
         self.calculator = calculator  # type: ignore[assignment]
@@ -219,7 +219,7 @@ class PhononCalc(PropCalc):
                         f"{len(imag_modes)} imaginary modes found with values below "
                         f"{self.imag_mode_threshold}: {imag_modes}"
                     )
-                    raise ValueError(msg)
+                    raise RuntimeError(msg)
 
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]
