@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
 import phonopy
 from phonopy.file_IO import write_FORCE_CONSTANTS as write_force_constants
 from pymatgen.io.phonopy import get_phonopy_structure, get_pmg_structure
