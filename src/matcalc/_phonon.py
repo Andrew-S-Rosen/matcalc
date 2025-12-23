@@ -79,6 +79,7 @@ class PhononCalc(PropCalc):
         the calculated phonon properties (e.g., phonon.yaml) to an output
         file, and the path or name of the file if applicable.
     :type write_phonon: bool | str | Path
+    :type imag_mode_threshold: None | float
     """
 
     def __init__(
