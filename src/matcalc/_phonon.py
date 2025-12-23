@@ -213,8 +213,10 @@ class PhononCalc(PropCalc):
             neg_mask = frequencies < -self.imag_mode_threshold
             n_imag_modes = np.sum(weights[neg_mask] > 1e-6)
             if has_negative_mode:
-                raise ValueError(f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}")
-            
+                raise ValueError(
+                    f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}"
+                )
+
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]
         return result | {"phonon": phonon, "thermal_properties": phonon.get_thermal_properties_dict()}
