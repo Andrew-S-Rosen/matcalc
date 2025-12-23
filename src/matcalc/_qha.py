@@ -85,7 +85,7 @@ class QHACalc(PropCalc):
         t_max: float = 1000,
         t_min: float = 0,
         pressure: None | float = None,
-        fmax: float = 0.1,
+        fmax: float = 0.05,
         optimizer: str = "FIRE",
         eos: Literal["vinet", "birch_murnaghan", "murnaghan"] = "vinet",
         relax_structure: bool = True,
