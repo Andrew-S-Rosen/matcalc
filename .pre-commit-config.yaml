@@ -5,14 +5,18 @@ ci:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.5
+    rev: v0.14.9
     hooks:
-      - id: ruff
-        args: [--fix]
+      - id: ruff-check
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+        exclude: ^dev_scripts*|^docs*|^benchmark_data*
       - id: ruff-format
+        types_or: [ python, pyi ]
+        exclude: ^dev_scripts*|^docs*|^benchmark_data*
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
         exclude: pymatgen/analysis/vesta_cutoffs.yaml
@@ -20,7 +24,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies: [numpy>=1.2.5]
@@ -35,12 +39,12 @@ repos:
         additional_dependencies: [tomli] # needed to read pyproject.toml below py3.11
 
   - repo: https://github.com/kynan/nbstripout
-    rev: 0.8.1
+    rev: 0.8.2
     hooks:
       - id: nbstripout
         args: [--drop-empty-cells, --keep-output]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.403
+    rev: v1.1.407
     hooks:
       - id: pyright

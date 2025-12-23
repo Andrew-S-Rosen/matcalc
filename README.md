@@ -25,7 +25,7 @@ Calculator).
 
 ## Documentation
 
-The API documentation and tutorials are available at https://matcalc.ai.
+The API documentation and tutorials are available at http://matcalc.ai.
 
 ## Outline
 
@@ -71,7 +71,7 @@ r2scan_calculator = mtc.load_fp("r2scan")
 ```
 
 At the time of writing, these are the `TensorNet-MatPES-v2025.1` models for these functionals. However, these
-recommendations may updated as improved models become available.
+recommendations may be updated as improved models become available.
 
 MatCalc also supports trivial parallelization using joblib via the `calc_many` method.
 
@@ -175,6 +175,11 @@ initializing the benchmark to limit the number of calculations to do some testin
 
 Docker images with MatCalc and LAMMPS support are available at the [Materials Virtual Lab Docker Repository].
 
+## Tutorials
+
+Anubhav Jain (@computron) has created a nice [YouTube tutorial](https://youtu.be/57Elhe4IIhI?si=KbZh5s7HAyNGvmFT) on
+how to use MatCalc to quickly obtain properties of materials.
+
 ## Citing
 
 A manuscript on `matcalc` is currently in the works. In the meantime, please see [`citation.cff`](citation.cff) or the GitHub
@@ -185,4 +190,4 @@ sidebar for a BibTeX and APA citation.
 [MatPES]: https://matpes.ai
 [MatCalc]: https://matcalc.ai
 [ASE]: https://wiki.fysik.dtu.dk/ase/
-[Materials Virtual Lab Docker Repository]: https://hub.docker.com/orgs/materialsvirtuallab/repositories
+[Materials Virtual Lab Docker Repository]: https://hub.docker.com/u/materialsvirtuallab

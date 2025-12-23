@@ -9,12 +9,14 @@ try:
 except PackageNotFoundError:
     pass  # package not installed
 
+from ._adsorption import AdsorptionCalc
 from ._base import ChainedCalc, PropCalc
 from ._elasticity import ElasticityCalc
 from ._eos import EOSCalc
+from ._interface import InterfaceCalc
 from ._lammps import LAMMPSMDCalc
 from ._md import MDCalc
-from ._neb import NEBCalc
+from ._neb import MEP, NEBCalc
 from ._phonon import PhononCalc
 from ._phonon3 import Phonon3Calc
 from ._qha import QHACalc
