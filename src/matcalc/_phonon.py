@@ -208,15 +208,16 @@ class PhononCalc(PropCalc):
         if self.write_total_dos or self.imag_mode_threshold:
             dos = phonon.auto_total_dos(write_dat=True, filename=self.write_total_dos if self.write_total_dos else None)
 
-            dos_dict = dos.get_total_dos_dict()
-            frequencies = dos_dict["frequency_points"]
-            weights = dos_dict["total_dos"]
-            neg_mask = frequencies < -self.imag_mode_threshold
-            n_imag_modes = np.sum(weights[neg_mask] > 1e-6)
-            if has_negative_mode:
-                raise ValueError(
-                    f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}"
-                )
+            if self.imag_mode_threshold:
+                dos_dict = dos.get_total_dos_dict()
+                frequencies = dos_dict["frequency_points"]
+                weights = dos_dict["total_dos"]
+                neg_mask = frequencies < -self.imag_mode_threshold
+                n_imag_modes = np.sum(weights[neg_mask] > 1e-6)
+                if has_negative_mode:
+                    raise ValueError(
+                        f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}"
+                    )
 
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]
