@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
 import phonopy
 from phonopy.file_IO import write_FORCE_CONSTANTS as write_force_constants
 from pymatgen.io.phonopy import get_phonopy_structure, get_pmg_structure
@@ -123,8 +124,9 @@ class PhononCalc(PropCalc):
         :param write_total_dos: File path or boolean flag to write total density of states (DOS) data.
             Defaults to "total_dos.dat".
         :param write_phonon: File path or boolean flag to write phonon data. Defaults to "phonon.yaml".
-        :param imag_mode_threshold: If there exists an imaginary mode with magnitude above imag_mode_thresohld (THz),
-            then raise a ValueError.
+        :param imag_mode_threshold: If there exists an imaginary mode with values below imag_mode_threshold (THz),
+            then raise a ValueError. For instance, setting this to -0.1 will raise an error if there are frequencies
+            with values less than -0.1 THz, where a negative frequency indicates an imaginary mode per convention.
         """
         self.calculator = calculator  # type: ignore[assignment]
         self.atom_disp = atom_disp
@@ -206,18 +208,19 @@ class PhononCalc(PropCalc):
         if self.write_band_structure:
             phonon.auto_band_structure(write_yaml=True, filename=self.write_band_structure)
         if self.write_total_dos or self.imag_mode_threshold:
-            dos = phonon.auto_total_dos(write_dat=True, filename=self.write_total_dos if self.write_total_dos else None)
+            phonon.auto_total_dos(write_dat=bool(self.write_total_dos), filename=self.write_total_dos)
 
             if self.imag_mode_threshold:
-                dos_dict = dos.get_total_dos_dict()
+                dos_dict = phonon.get_total_dos_dict()
                 frequencies = dos_dict["frequency_points"]
                 weights = dos_dict["total_dos"]
-                neg_mask = frequencies < -self.imag_mode_threshold
-                n_imag_modes = np.sum(weights[neg_mask] > 1e-6)
-                if has_negative_mode:
-                    raise ValueError(
-                        f"{n_imag_modes} imaginary modes found with magnitude above {self.imag_mode_threshold}"
+                imag_modes = frequencies[(frequencies < self.imag_mode_threshold) & (weights > 0.0)]
+                if len(imag_modes) > 0:
+                    msg = (
+                        f"{len(imag_modes)} imaginary modes found with values below "
+                        f"{self.imag_mode_threshold}: {imag_modes}"
                     )
+                    raise ValueError(msg)
 
         if self.write_phonon:
             phonon.save(filename=self.write_phonon)  # type: ignore[arg-type]

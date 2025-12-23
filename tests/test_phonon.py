@@ -95,3 +95,27 @@ def test_phonon_calc_atoms(
     thermal_props = result["thermal_properties"]
     ind = thermal_props["temperatures"].tolist().index(300)
     assert thermal_props["heat_capacity"][ind] == pytest.approx(43.3138042001517, rel=1e-1)
+
+
+def test_phonon_calc_not_a_mininmum(
+    Si_atoms: Atoms,
+    matpes_calculator: PESCalculator,
+) -> None:
+    """Tests for PhononCalc class"""
+    phonon_calc = PhononCalc(
+        calculator=matpes_calculator,
+        supercell_matrix=((2, 0, 0), (0, 2, 0), (0, 0, 2)),
+        fmax=0.1,
+        imag_mode_threshold=-0.1,
+    )
+    assert phonon_calc.calc(Si_atoms)
+
+    Si_atoms.cell += 0.5
+    phonon_calc = PhononCalc(
+        calculator=matpes_calculator,
+        supercell_matrix=((2, 0, 0), (0, 2, 0), (0, 0, 2)),
+        fmax=100.0,
+        imag_mode_threshold=-0.1,
+    )
+    with pytest.raises(ValueError, match="40 imaginary modes found"):
+        phonon_calc.calc(Si_atoms)
