@@ -122,7 +122,7 @@ class PhononCalc(PropCalc):
         :param write_total_dos: File path or boolean flag to write total density of states (DOS) data.
             Defaults to "total_dos.dat".
         :param write_phonon: File path or boolean flag to write phonon data. Defaults to "phonon.yaml".
-        :params imag_mode_threshold: If there exists an imaginary mode with magnitude above imag_mode_thresohld (THz),
+        :param imag_mode_threshold: If there exists an imaginary mode with magnitude above imag_mode_thresohld (THz),
             then raise a ValueError.
         """
         self.calculator = calculator  # type: ignore[assignment]
