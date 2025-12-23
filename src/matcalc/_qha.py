@@ -141,7 +141,7 @@ class QHACalc(PropCalc):
             fitting.
         :param write_gruneisen_temperature: Path, boolean, or string to indicate whether and
             where to save Grüneisen parameter values as a function of temperature.
-        :param imag_mode_threshold: If there exists an imaginary mode with magnitude above 
+        :param imag_mode_threshold: If there exists an imaginary mode with magnitude above
             mag_mode_thresohld (THz), then raise a ValueError.
         """
         self.calculator = calculator  # type: ignore[assignment]
