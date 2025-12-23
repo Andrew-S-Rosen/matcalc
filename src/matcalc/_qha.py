@@ -73,6 +73,7 @@ class QHACalc(PropCalc):
     :type write_heat_capacity_p_polyfit: bool | str | Path
     :ivar write_gruneisen_temperature: Path or boolean to control saving Grüneisen parameter vs. temperature data.
     :type write_gruneisen_temperature: bool | str | Path
+    :type imag_mode_threshold: None | float
     """
 
     def __init__(
@@ -97,6 +98,7 @@ class QHACalc(PropCalc):
         write_heat_capacity_p_numerical: bool | str | Path = False,
         write_heat_capacity_p_polyfit: bool | str | Path = False,
         write_gruneisen_temperature: bool | str | Path = False,
+        imag_mode_threshold: float | None = None,
     ) -> None:
         """
         Initializes the class that handles thermal and structural calculations, including atomic
@@ -139,6 +141,8 @@ class QHACalc(PropCalc):
             fitting.
         :param write_gruneisen_temperature: Path, boolean, or string to indicate whether and
             where to save Grüneisen parameter values as a function of temperature.
+        :param imag_mode_threshold: If there exists an imaginary mode with magnitude above 
+            mag_mode_thresohld (THz), then raise a ValueError.
         """
         self.calculator = calculator  # type: ignore[assignment]
         self.t_step = t_step
@@ -159,6 +163,7 @@ class QHACalc(PropCalc):
         self.write_heat_capacity_p_numerical = write_heat_capacity_p_numerical
         self.write_heat_capacity_p_polyfit = write_heat_capacity_p_polyfit
         self.write_gruneisen_temperature = write_gruneisen_temperature
+        self.imag_mode_threshold = imag_mode_threshold
         for key, val, default_path in (
             (
                 "write_helmholtz_volume",
@@ -301,6 +306,7 @@ class QHACalc(PropCalc):
             t_min=self.t_min,
             relax_structure=False,
             write_phonon=False,
+            imag_mode_threshold=self.imag_mode_threshold,
             **(self.phonon_calc_kwargs or {}),
         )
         return phonon_calc.calc(structure)["thermal_properties"]
