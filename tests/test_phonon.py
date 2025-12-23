@@ -117,5 +117,5 @@ def test_phonon_calc_not_a_mininmum(
         fmax=100.0,
         imag_mode_threshold=-0.1,
     )
-    with pytest.raises(ValueError, match="40 imaginary modes found"):
+    with pytest.raises(RuntimeError, match="40 imaginary modes found"):
         phonon_calc.calc(Si_atoms)
