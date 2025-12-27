@@ -142,7 +142,7 @@ class QHACalc(PropCalc):
         :param write_gruneisen_temperature: Path, boolean, or string to indicate whether and
             where to save Grüneisen parameter values as a function of temperature.
         :param imag_mode_threshold: If there exists an imaginary mode with values below imag_mode_threshold (THz),
-            then raise a ValueError. For instance, setting this to -0.1 will raise an error if there are frequencies
+            then raise a RuntimeError. For instance, setting this to -0.1 will raise an error if there are frequencies
             with values less than -0.1 THz, where a negative frequency indicates an imaginary mode per convention.
         """
         self.calculator = calculator  # type: ignore[assignment]
