@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -64,13 +65,14 @@ class PhononCalc(PropCalc):
     :ivar relax_calc_kwargs: Optional dictionary containing additional
         arguments for the structural relaxation calculation.
     :type relax_calc_kwargs: dict | None
-    :ivar imaginary_freq_tol: Tolerance for imaginary frequency detection
-        in THz. If set to a float value, the calculator will raise a
-        ValueError when imaginary frequencies with magnitude exceeding this
-        threshold are found. Imaginary frequencies are represented as
-        negative values in phonopy. A value of None (default) disables
-        the check.
+    :ivar imaginary_freq_tol: Tolerance for imaginary frequency detection in
+        THz. If a frequency is found with a value below imaginary_freq_tol,
+        a ValueError is raised. Defaults to None (no check).
     :type imaginary_freq_tol: float | None
+    :ivar error_on_imaginaries: If there is an frequency with a value below
+        imaginary_freq_tol, then raise a ValueError if True; if False then
+        provide a UserWarning.
+    :type error_on_imaginaries: bool
     :ivar write_force_constants: Path, boolean, or string specifying whether
         to write the calculated force constants to an output file, and the
         path or name of the file if applicable.
@@ -104,6 +106,7 @@ class PhononCalc(PropCalc):
         relax_structure: bool = True,
         relax_calc_kwargs: dict | None = None,
         imaginary_freq_tol: float | None = None,
+        error_on_imaginaries: bool = True,
         write_force_constants: bool | str | Path = False,
         write_band_structure: bool | str | Path = False,
         write_total_dos: bool | str | Path = False,
@@ -125,9 +128,10 @@ class PhononCalc(PropCalc):
         :param optimizer: Name of the optimization algorithm for structural relaxation.
         :param relax_structure: Flag to indicate whether structure relaxation should be performed before calculations.
         :param relax_calc_kwargs: Additional keyword arguments for relaxation phase calculations.
-        :param imaginary_freq_tol: Tolerance for imaginary frequency detection in THz.
-            If a positive float, a ValueError is raised when any imaginary frequency with
-            magnitude exceeding this value is found. Defaults to None (no check).
+        :param imaginary_freq_tol: Tolerance for imaginary frequency detection in THz. If a frequency is found with
+            a value below imaginary_freq_tol, a ValueError is raised. Defaults to None (no check).
+        :param error_on_imaginaries: If there is a frequency with value below imaginary_freq_tol, then
+            raise a ValueError if True or raise a UserWarning if False.
         :param write_force_constants: File path or boolean flag to write force constants.
             Defaults to "force_constants".
         :param write_band_structure: File path or boolean flag to write band structure data.
@@ -148,6 +152,7 @@ class PhononCalc(PropCalc):
         self.relax_structure = relax_structure
         self.relax_calc_kwargs = relax_calc_kwargs
         self.imaginary_freq_tol = imaginary_freq_tol
+        self.error_on_imaginaries = error_on_imaginaries
         self.write_force_constants = write_force_constants
         self.write_band_structure = write_band_structure
         self.write_total_dos = write_total_dos
@@ -217,16 +222,20 @@ class PhononCalc(PropCalc):
 
         if self.imaginary_freq_tol is not None:
             # In phonopy, imaginary frequencies are represented as negative values.
-            imag_freq_mask = frequencies < -self.imaginary_freq_tol
-            n_freqs = len(frequencies)
+            imag_freq_mask = frequencies < self.imaginary_freq_tol
             if np.any(imag_freq_mask):
                 n_imag = np.sum(imag_freq_mask)
+                n_freqs = frequencies.size
                 min_mode = np.min(frequencies)
-                raise ValueError(
-                    f"{n_imag}/{n_freqs} are imaginary (below -{self.imaginary_freq_tol:.4f} THz). "
+                msg = (
+                    f"{n_imag}/{n_freqs} modes are imaginary (below -{self.imaginary_freq_tol:.4f} THz). "
                     f"Most negative: {min_mode:.4f} THz. This indicates a dynamically unstable structure. "
                     f"Thermal properties may not be reliable."
                 )
+                if self.error_on_imaginaries is False:
+                    warnings.warn(msg, UserWarning, stacklevel=2)
+                else:
+                    raise ValueError(msg)
 
         phonon.run_thermal_properties(t_step=self.t_step, t_max=self.t_max, t_min=self.t_min)
         if self.write_force_constants:
