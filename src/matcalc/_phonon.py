@@ -93,7 +93,7 @@ class PhononCalc(PropCalc):
         self,
         calculator: Calculator | str,
         *,
-        atom_disp: float = 0.015,
+        atom_disp: float = 0.01,
         supercell_matrix: ArrayLike = ((2, 0, 0), (0, 2, 0), (0, 0, 2)),
         t_step: float = 10,
         t_max: float = 1000,
