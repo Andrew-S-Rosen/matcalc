@@ -191,3 +191,44 @@ def test_phonon_calc_imaginary_freq_tol(
     result = phonon_calc.calc(distorted_si_atoms)
     assert "frequencies" in result
     assert np.min(result["frequencies"]) < -0.1
+
+
+def test_phonon_calc_fix_imaginary_attempts(
+    Si_atoms: Atoms,
+    matpes_calculator: PESCalculator,
+) -> None:
+    """Test that fix_imaginary_attempts attempts to resolve imaginary modes."""
+    # Stable structure: loop should break early (no imaginary modes found)
+    phonon_calc = PhononCalc(
+        calculator=matpes_calculator,
+        supercell_matrix=((2, 0, 0), (0, 2, 0), (0, 0, 2)),
+        fmax=0.1,
+        t_step=50,
+        t_max=1000,
+        imaginary_freq_tol=-0.1,
+        fix_imaginary_attempts=2,
+        imaginary_mode_disp=0.1,
+    )
+    result = phonon_calc.calc(Si_atoms)
+    assert "phonon" in result
+    assert "thermal_properties" in result
+    assert "frequencies" in result
+
+    # Distorted structure: loop should attempt to fix imaginary modes
+    distorted_si_atoms = Si_atoms.copy()
+    distorted_si_atoms.cell += 0.5
+    phonon_calc = PhononCalc(
+        calculator=matpes_calculator,
+        supercell_matrix=((2, 0, 0), (0, 2, 0), (0, 0, 2)),
+        fmax=0.1,
+        t_step=50,
+        t_max=1000,
+        imaginary_freq_tol=0.0,
+        on_imaginary_modes="ignore",
+        fix_imaginary_attempts=2,
+        imaginary_mode_disp=0.1,
+    )
+    result = phonon_calc.calc(distorted_si_atoms)
+    assert "phonon" in result
+    assert "thermal_properties" in result
+    assert "frequencies" in result

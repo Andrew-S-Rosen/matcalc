@@ -51,6 +51,13 @@ class QHACalc(PropCalc):
         imaginary_freq_tol, then either raise a ValueError, UserWarning, or
         ignore.
     :type on_imaginary_modes: Literal["error", "ignore", "warn"]
+    :ivar fix_imaginary_attempts: Maximum number of attempts to fix imaginary modes
+        per scale factor by displacing atoms along imaginary eigenvectors and
+        re-relaxing. Default is 0 (no fixing attempted).
+    :type fix_imaginary_attempts: int
+    :ivar imaginary_mode_disp: Displacement distance in Angstrom applied
+        along each imaginary eigenvector per fixing attempt.
+    :type imaginary_mode_disp: float
     :ivar eos: Equation of state used for fitting energy vs. volume data.
     :type eos: Literal["vinet", "birch_murnaghan", "murnaghan"]
     :ivar fmax: Maximum force threshold for structure relaxation in eV/Å.
@@ -94,6 +101,8 @@ class QHACalc(PropCalc):
         scale_factors: Sequence[float] = tuple(np.arange(0.95, 1.05, 0.01)),
         imaginary_freq_tol: float = 0.0,
         on_imaginary_modes: Literal["error", "ignore", "warn"] = "ignore",
+        fix_imaginary_attempts: int = 0,
+        imaginary_mode_disp: float = 0.1,
         eos: Literal["vinet", "birch_murnaghan", "murnaghan"] = "vinet",
         fmax: float = 1e-5,
         max_steps: int = 5000,
@@ -128,6 +137,8 @@ class QHACalc(PropCalc):
             a value below imaginary_freq_tol, it is considered imaginary.
         :param on_imaginary_modes: If there is an frequency with a value below imaginary_freq_tol, then
             raise a ValueError ("error"), UserWarning ("warn"), or do nothing ("ignore").
+        :param fix_imaginary_attempts: Maximum number of attempts to fix imaginary modes per scale factor.
+        :param imaginary_mode_disp: Displacement in Angstrom along each imaginary eigenvector per attempt.
         :param eos: Equation of state to use for calculating energy vs. volume relationships.
             Default is "vinet".
         :param fmax: Maximum force convergence criterion for structure relaxation, in force units.
@@ -167,6 +178,8 @@ class QHACalc(PropCalc):
         self.scale_factors = scale_factors
         self.imaginary_freq_tol = imaginary_freq_tol
         self.on_imaginary_modes = on_imaginary_modes
+        self.fix_imaginary_attempts = fix_imaginary_attempts
+        self.imaginary_mode_disp = imaginary_mode_disp
         self.eos = eos
         self.fmax = fmax
         self.max_steps = max_steps
@@ -367,6 +380,8 @@ class QHACalc(PropCalc):
             "t_min": self.t_min,
             "imaginary_freq_tol": self.imaginary_freq_tol,
             "on_imaginary_modes": self.on_imaginary_modes,
+            "fix_imaginary_attempts": self.fix_imaginary_attempts,
+            "imaginary_mode_disp": self.imaginary_mode_disp,
             "relax_structure": False,
             "write_phonon": False,
         } | (self.phonon_calc_kwargs or {})

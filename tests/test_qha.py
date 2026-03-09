@@ -260,3 +260,26 @@ def test_phonon_calc_imaginary_freq_tol(
     assert qha_calc.calc(distorted_si_atoms)
     assert len(result["volumes"]) == 7
     assert len(result["electronic_energies"]) == 7
+
+
+def test_qha_calc_fix_imaginary_attempts(
+    Si_atoms: Atoms,
+    matpes_calculator: PESCalculator,
+) -> None:
+    """Test that QHACalc passes fix_imaginary_attempts through to PhononCalc."""
+    # Stable structure: loop should break early (no imaginary modes) for each scale factor
+    qha_calc = QHACalc(
+        calculator=matpes_calculator,
+        t_step=50,
+        t_max=1000,
+        scale_factors=[0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03],
+        fmax=0.1,
+        imaginary_freq_tol=-0.1,
+        fix_imaginary_attempts=2,
+        imaginary_mode_disp=0.1,
+        phonon_calc_kwargs={"supercell_matrix": ((2, 0, 0), (0, 2, 0), (0, 0, 2))},
+    )
+    result = qha_calc.calc(Si_atoms)
+    assert "qha" in result
+    assert "volumes" in result
+    assert len(result["volumes"]) == 7

@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import phonopy
 from phonopy.file_IO import write_FORCE_CONSTANTS as write_force_constants
+from pymatgen.core import Structure
 from pymatgen.io.phonopy import get_phonopy_structure, get_pmg_structure
+from tqdm import tqdm
 
 from ._base import PropCalc
 from ._relaxation import RelaxCalc
@@ -22,7 +24,6 @@ if TYPE_CHECKING:
     from ase import Atoms
     from ase.calculators.calculator import Calculator
     from numpy.typing import ArrayLike
-    from pymatgen.core import Structure
 
 
 class PhononCalc(PropCalc):
@@ -66,6 +67,13 @@ class PhononCalc(PropCalc):
         imaginary_freq_tol, then either raise a ValueError, UserWarning, or
         ignore.
     :type on_imaginary_modes: Literal["error", "ignore", "warn"]
+    :ivar fix_imaginary_attempts: Maximum number of attempts to resolve imaginary
+        modes by displacing atoms along the imaginary eigenvectors and
+        re-relaxing. Default is 0 (no fixing attempted).
+    :type fix_imaginary_attempts: int
+    :ivar imaginary_mode_disp: Displacement distance in Angstrom applied
+        along each imaginary eigenvector when attempting to fix imaginary modes.
+    :type imaginary_mode_disp: float
     :ivar fmax: Maximum force convergence criterion for structural relaxation.
     :type fmax: float
     :ivar optimizer: String specifying the optimizer type to be used for
@@ -107,6 +115,8 @@ class PhononCalc(PropCalc):
         t_min: float = 0,
         imaginary_freq_tol: float = 0.0,
         on_imaginary_modes: Literal["error", "ignore", "warn"] = "ignore",
+        fix_imaginary_attempts: int = 0,
+        imaginary_mode_disp: float = 0.1,
         fmax: float = 1e-5,
         max_steps: int = 5000,
         optimizer: str = "FIRE",
@@ -134,6 +144,10 @@ class PhononCalc(PropCalc):
             a value below imaginary_freq_tol, it is considered imaginary.
         :param on_imaginary_modes: If there is an frequency with a value below imaginary_freq_tol, then
             raise a ValueError ("error"), UserWarning ("warn"), or do nothing ("ignore").
+        :param fix_imaginary_attempts: Maximum number of attempts to fix imaginary modes by displacing atoms
+            along imaginary eigenvectors at Gamma and re-relaxing. Default 0 disables fixing.
+        :param imaginary_mode_disp: Displacement in Angstrom applied along each imaginary eigenvector
+            per fixing attempt.
         :param fmax: Maximum force during structure relaxation, used as a convergence criterion.
         :param max_steps: The maximum number of optimization steps to perform during the relaxation process.
         :param optimizer: Name of the optimization algorithm for structural relaxation.
@@ -156,6 +170,8 @@ class PhononCalc(PropCalc):
         self.t_min = t_min
         self.imaginary_freq_tol = imaginary_freq_tol
         self.on_imaginary_modes = on_imaginary_modes
+        self.fix_imaginary_attempts = fix_imaginary_attempts
+        self.imaginary_mode_disp = imaginary_mode_disp
         self.fmax = fmax
         self.max_steps = max_steps
         self.optimizer = optimizer
@@ -218,21 +234,20 @@ class PhononCalc(PropCalc):
             result |= relaxer.calc(structure_in)
             structure_in = result["final_structure"]
 
-        cell = get_phonopy_structure(structure_in)
         if self.supercell_matrix:
             supercell_matrix = np.array(self.supercell_matrix, dtype=int)
         else:
             supercell_matrix = np.diag(np.ceil(self.min_length / np.array(structure_in.lattice.abc)).astype(int))
 
-        phonon = phonopy.Phonopy(cell, supercell_matrix=supercell_matrix)
-        phonon.generate_displacements(distance=self.atom_disp)
-        disp_supercells = [
-            get_pmg_structure(supercell)
-            for supercell in phonon.supercells_with_displacements  # type:ignore[union-attr]
-            if supercell is not None
-        ]
-        phonon.forces = [run_pes_calc(supercell, self.calculator).forces for supercell in disp_supercells]
-        phonon.produce_force_constants()
+        phonon, disp_supercells = self._compute_phonon(structure_in, supercell_matrix)
+
+        for _ in tqdm(range(self.fix_imaginary_attempts), desc="Fixing imaginary modes"):
+            phonon.run_mesh()
+            if not np.any(phonon.get_mesh_dict()["frequencies"] < self.imaginary_freq_tol):
+                break
+            structure_in = self._displace_along_imaginary_modes(structure_in, phonon)
+            phonon, disp_supercells = self._compute_phonon(structure_in, supercell_matrix)
+
         phonon.run_mesh()
         mesh_dict_results = phonon.get_mesh_dict()
         frequencies = mesh_dict_results["frequencies"]
@@ -269,3 +284,64 @@ class PhononCalc(PropCalc):
             "frequencies": frequencies,
             "disp_supercells": disp_supercells,
         }
+
+    def _compute_phonon(
+        self, structure: Structure, supercell_matrix: np.ndarray
+    ) -> tuple[phonopy.Phonopy, list[Structure]]:
+        """Build a Phonopy object, compute forces, and produce force constants.
+
+        Args:
+            structure: Primitive cell structure.
+            supercell_matrix: Supercell transformation matrix.
+
+        Returns:
+            Tuple of (Phonopy object with force constants, list of displaced supercell structures).
+        """
+        cell = get_phonopy_structure(structure)
+        phonon = phonopy.Phonopy(cell, supercell_matrix=supercell_matrix)
+        phonon.generate_displacements(distance=self.atom_disp)
+        disp_supercells = [
+            get_pmg_structure(supercell)
+            for supercell in phonon.supercells_with_displacements  # type:ignore[union-attr]
+            if supercell is not None
+        ]
+        phonon.forces = [run_pes_calc(supercell, self.calculator).forces for supercell in disp_supercells]
+        phonon.produce_force_constants()
+        return phonon, disp_supercells
+
+    def _displace_along_imaginary_modes(self, structure: Structure, phonon: phonopy.Phonopy) -> Structure:
+        """Displace atoms along imaginary Gamma-point eigenvectors and relax.
+
+        Args:
+            structure: Current primitive cell structure.
+            phonon: Phonopy object with force constants already produced.
+
+        Returns:
+            Relaxed structure after displacement along imaginary Gamma-point modes.
+        """
+        phonon.run_qpoints([[0, 0, 0]], with_eigenvectors=True)
+        qpoints_dict = phonon.get_qpoints_dict()
+        gamma_freqs = qpoints_dict["frequencies"][0]  # (nbands,)
+        gamma_eigvecs = qpoints_dict["eigenvectors"][0]  # (natoms*3, nbands), complex
+
+        imag_mask = gamma_freqs < self.imaginary_freq_tol
+        n_atoms = len(structure)
+        displacements = np.zeros((n_atoms, 3))
+        for band_idx in np.where(imag_mask)[0]:
+            eigvec = gamma_eigvecs[:, band_idx].real  # (natoms*3,)
+            norm = np.linalg.norm(eigvec)
+            if norm > 0:
+                eigvec = eigvec / norm
+            displacements += eigvec.reshape(n_atoms, 3) * self.imaginary_mode_disp
+
+        displaced = Structure(
+            lattice=structure.lattice,
+            species=structure.species,
+            coords=structure.cart_coords + displacements,
+            coords_are_cartesian=True,
+        )
+        relax_calc_kwargs = {"fmax": self.fmax, "optimizer": self.optimizer, "max_steps": self.max_steps} | (
+            self.relax_calc_kwargs or {}
+        )
+        relaxer = RelaxCalc(self.calculator, **relax_calc_kwargs)
+        return relaxer.calc(displaced)["final_structure"]
