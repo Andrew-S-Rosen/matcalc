@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from phonopy import PhonopyQHA
+from tqdm import tqdm
 
 from ._base import PropCalc
 from ._phonon import PhononCalc
 from ._relaxation import RelaxCalc
+from .utils import to_pmg_structure
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,6 +43,7 @@ class QHACalc(PropCalc):
     :ivar t_min: Minimum temperature in Kelvin.
     :type t_min: float
     :type pressure: float | None
+    :ivar pressure: Pressure in GPa
     :ivar fmax: Maximum force threshold for structure relaxation in eV/Å.
     :type fmax: float
     :ivar optimizer: Type of optimizer used for structural relaxation.
@@ -243,7 +246,7 @@ class QHACalc(PropCalc):
         }
         """
         result = super().calc(structure)
-        structure_in: Structure = result["final_structure"]
+        structure_in: Structure = to_pmg_structure(result["final_structure"])
 
         if self.relax_structure:
             relax_calc_kwargs = {"fmax": self.fmax, "optimizer": self.optimizer, "max_steps": self.max_steps} | (
@@ -301,7 +304,7 @@ class QHACalc(PropCalc):
         entropies = []
         heat_capacities = []
         scaled_structures = []
-        for scale_factor in self.scale_factors:
+        for scale_factor in tqdm(self.scale_factors, desc="Performing analysis on scale factors"):
             # Apply linear strain
             struct = self._scale_structure(structure, scale_factor)
             volumes.append(struct.volume)
