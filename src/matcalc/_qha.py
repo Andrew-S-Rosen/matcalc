@@ -360,6 +360,7 @@ class QHACalc(PropCalc):
                 raise ValueError(
                     f"Somehow the volume changed during relaxation. This is a bug! Before: {scaled_structure.volume}. "
                     f"After: {volume}"
+                )
             ha.append(phonon_result)
             scaled_structures.append(phonon_result["final_structure"])
             volumes.append(volume)
