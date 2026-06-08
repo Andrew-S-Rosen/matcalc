@@ -211,7 +211,12 @@ class PhononCalc(PropCalc):
         else:
             supercell_matrix = np.diag(np.ceil(self.min_length / np.array(structure.lattice.abc)).astype(int))
 
-        phonon = phonopy.Phonopy(cell, supercell_matrix=supercell_matrix, symprec=self.symprec, primitive_matrix="P")
+        phonon = phonopy.Phonopy(
+            cell,
+            supercell_matrix=supercell_matrix,
+            symprec=self.symprec,
+            primitive_matrix="P",
+        )
         phonon.generate_displacements(distance=self.atom_disp)
         disp_supercells = [
             get_pmg_structure(supercell)
@@ -276,7 +281,11 @@ class PhononCalc(PropCalc):
         )
         relax_result: dict = {}
         for attempt in range(self.fix_imaginary_attempts):
-            logger.info("Imaginary mode correction attempt %d/%d", attempt + 1, self.fix_imaginary_attempts)
+            logger.info(
+                "Imaginary mode correction attempt %d/%d",
+                attempt + 1,
+                self.fix_imaginary_attempts,
+            )
             structure_in = self._rattle_structure(structure_in)
 
             logger.info("Re-relaxing structure at fixed cell volume following rattle.")
@@ -322,8 +331,10 @@ class PhononCalc(PropCalc):
         Returns:
             Full result dict from RelaxCalc.
         """
-        relax_calc_kwargs = {"fmax": self.fmax, "optimizer": self.optimizer, "max_steps": self.max_steps} | (
-            self.relax_calc_kwargs or {}
-        )
+        relax_calc_kwargs = {
+            "fmax": self.fmax,
+            "optimizer": self.optimizer,
+            "max_steps": self.max_steps,
+        } | (self.relax_calc_kwargs or {})
         relaxer = RelaxCalc(self.calculator, **cast("Any", relax_calc_kwargs))
         return relaxer.calc(structure_in)
