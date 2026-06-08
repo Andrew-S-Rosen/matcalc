@@ -226,7 +226,7 @@ def test_qha_pressure_nonprimitive(
 ) -> None:
     """Tests for QHACalc class with pressure parameter and non-primitive cell."""
     # Initialize QHACalc
-    Li2O *= (2, 1, 1)
+    li2o_supercell = Li2O * (2, 1, 1)
     qha_calc = QHACalc(
         calculator=matpes_calculator,
         t_step=50,
@@ -237,7 +237,7 @@ def test_qha_pressure_nonprimitive(
         phonon_calc_kwargs={"supercell_matrix": ((2, 0, 0), (0, 2, 0), (0, 0, 2))},
     )
 
-    result = qha_calc.calc(Li2O)
+    result = qha_calc.calc(li2o_supercell)
 
     # Test values corresponding to different scale factors
     assert result["volumes"] == pytest.approx(
