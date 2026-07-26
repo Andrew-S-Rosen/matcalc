@@ -195,6 +195,7 @@ ignore = [
     "SIM105", # Use contextlib.suppress(OSError) instead of try-except-pass
     "TRY003",
     "PLC0415",
+    "CPY001"
 ]
 exclude = ["docs/conf.py"]
 pydocstyle.convention = "google"
